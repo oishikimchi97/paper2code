@@ -1,0 +1,33 @@
+# Ignore data directory
+data/*
+!data/.gitkeep
+
+# Ignore example directory
+example/*
+
+# Ignore output directory
+output/*
+!output/.gitkeep
+
+# Ignore utils directory except for utils.py
+utils/*
+!utils/utils.py
+
+# Ignore paper directory
+paper/
+
+# Ignore ipynb files
+*.ipynb
+
+# Ignore artifacts
+*.jpg
+*.log
+*.txt
+*.zip
+
+# Ignore pycache folder
+**/__pycache__/
+
+# Private Config file
+config/OAI_CONFIG_LIST.json
+.*/
