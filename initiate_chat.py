@@ -3,13 +3,11 @@ import autogen
 import argparse
 from pathlib import Path
 from agent import ModelCreator
-from utils.utils import convert_img_src_to_absolute
+from utils.utils import attach_file2stdout, convert_img_src_to_absolute
 from autogen.agentchat.contrib.multimodal_conversable_agent import (
     MultimodalConversableAgent,
 )
 from config import gpt4v_config, gpt4_config
-
-os.environ["OPENAI_API_KEY"] = "Your_API_KEY_HERE"
 
 INTERPRETER_PROMPT = """
 You are machine learning paper interpreter. 
@@ -50,9 +48,7 @@ if __name__ == "__main__":
     user_proxy = autogen.UserProxyAgent(
         name="User", human_input_mode="NEVER", max_consecutive_auto_reply=0
     )
-    # TODO: Fix logging
-    # Start the conversation with logging
-    # autogen.ChatCompletion.start_logging()
+    logging_stream = attach_file2stdout(output_dir)
 
     user_proxy.send(message=script, recipient=interpreter, request_reply=True)
 
@@ -63,15 +59,3 @@ if __name__ == "__main__":
         message="Make a PyTorch model architecture based on the model description\n\ndescription:\n"
         + interpret,
     )
-
-    # autogen.ChatCompletion.stop_logging()
-
-    # import json
-    # from datetime import datetime
-
-    # # Get current date as a string
-    # current_date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-    # # Save user_proxy._oai_messages to a log file
-    # with open(f"log_{current_date}.json", "w") as f:
-    #     json.dump(autogen.ChatCompletion._history_dict, f)

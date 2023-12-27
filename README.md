@@ -46,8 +46,6 @@ Otherwise you can use your own docker image. Check [this site](https://microsoft
     },
   ]
   ```
-5. Set your OPENAI API KEY in `initiate_chat.py` file.  
-	You can get your OEPNAI API KEY on [this site](https://beta.openai.com/account/api-keys).
 
 # Data Convention
 In the each data folders, it must include the following file and folder.
