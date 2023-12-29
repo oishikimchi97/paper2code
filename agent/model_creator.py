@@ -4,7 +4,7 @@ from autogen.agentchat.contrib.multimodal_conversable_agent import (
 )
 from pathlib import Path
 
-COMMANDER_PROMPT = "Help me run the code from the model image and the description. Save the code in `model.py` file and tell other agents it is in the `model.py` file."
+COMMANDER_PROMPT = "Help me run the code from the model image and the description."
 
 CRITICS_PROMPT = """
 Criticize the pytorch model code. What is the difference between the description and the code? Find bugs and issues for the code. 
@@ -13,7 +13,7 @@ If you think the code is good enough, then simply say NO_ISSUES
 """.strip()
 
 CODER_PROMPT = """
-Create a PyTorch model architecture based on the following specifications:
+Write a PyTorch model architecture based on the following specifications:
 Model Type: Indicate the type of neural network model you require, such as Convolutional Neural Network (CNN), Recurrent Neural Network (RNN), Transformer, etc.
 Input Data Characteristics: Describe the characteristics of the input data. Include information about its dimensions and type (e.g., images, text, audio). Mention any specific preprocessing requirements, if applicable.
 Model Architecture Details:
@@ -22,7 +22,8 @@ Model Architecture Details:
     Special Architectural Features: If your model includes special connections or structures like skip connections, attention mechanisms, or other features, describe them here.
     Output Details: Define the output of the model. Specify the number of output units and the type of activation function used, especially for tasks like classification or regression.
 Based on this description, please generate the corresponding PyTorch code for defining the model architecture, including the necessary imports from the PyTorch library.
-You must save the code in `model.py` file and tell other agents it is in the `model.py` file.
+You must write the whole code that can run itself, but not just the model architecture. You must not skip any part of the code.
+You must save the code you wrote in `model.py` file. Put # filename: model.py inside the code block as the first line. Tell other agents it is in the `model.py` file.
 """.strip()
 
 
@@ -90,6 +91,10 @@ class ModelCreator(AssistantAgent):
             max_consecutive_auto_reply=1,
         )
 
+        paper_description = "Paper Description:\n" + self.paper_input + "\n\n"
+
+        critics.update_system_message(critics.system_message + paper_description)
+
         coder = AssistantAgent(
             name="Coder",
             llm_config=self.llm_config,
@@ -106,8 +111,7 @@ class ModelCreator(AssistantAgent):
             generated_code_box = "```\n" + generated_code + "\n```"
             commander.send(
                 message="Check that the code is correct with the model image and description.\nGive feedback if there are any issues.\n\n"
-                + self.paper_input
-                + "\n\ncode:\n"
+                + "code:\n"
                 + generated_code_box,
                 recipient=critics,
                 request_reply=True,
@@ -118,8 +122,6 @@ class ModelCreator(AssistantAgent):
                 break
             commander.send(
                 message="Here is the feedback to your pytorch model code. Please improve!\n\n"
-                + "pytorch model code:\n"
-                + generated_code
                 + "\n\nfeedback:\n"
                 + feedback,
                 recipient=coder,
