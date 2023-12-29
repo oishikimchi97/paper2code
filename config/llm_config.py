@@ -19,5 +19,5 @@ config_list_gpt4 = autogen.config_list_from_json(
     },
 )
 
-gpt4_config = {"config_list": config_list_gpt4, "max_tokens": 1000, "cache_seed": 42}
-gpt4v_config = {"config_list": config_list_4v, "max_tokens": 1000, "cache_seed": 42}
+gpt4_config = {"config_list": config_list_gpt4, "max_tokens": 2000, "cache_seed": 42}
+gpt4v_config = {"config_list": config_list_4v, "max_tokens": 2000, "cache_seed": 42}

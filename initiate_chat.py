@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import autogen
 import argparse
@@ -22,7 +23,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
-    output_dir = Path(args.output_dir) / data_dir.name
+    current_time = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    output_dir = Path(args.output_dir) / data_dir.name / current_time
+    output_dir.mkdir(parents=True, exist_ok=True)
     script_path = data_dir / "script.txt"
 
     with open(script_path) as f:

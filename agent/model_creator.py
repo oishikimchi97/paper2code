@@ -2,6 +2,7 @@ from autogen import AssistantAgent, Agent, UserProxyAgent, ConversableAgent
 from autogen.agentchat.contrib.multimodal_conversable_agent import (
     MultimodalConversableAgent,
 )
+from pathlib import Path
 
 COMMANDER_PROMPT = "Help me run the code from the model image and the description. Save the code in `model.py` file and tell other agents it is in the `model.py` file."
 
@@ -28,29 +29,29 @@ You must save the code in `model.py` file and tell other agents it is in the `mo
 class ModelCreator(AssistantAgent):
     def __init__(
         self,
-        n_iters=0,
+        max_iter=2,
         work_dir: str = ".",
         paper_input: str = "",
         vlm_config: dict = {},
         **kwargs,
     ):
         """
-        Initializes a FigureCreator instance.
+        Initializes a ModelCreater instance.
 
-        This agent facilitates the creation of visualizations through a collaborative effort among its child agents: commander, coder, and critics.
+        This agent create the pytorch model code through a collaborative effort among its child agents: commander, coder, and critics.
 
         Parameters:
-            - n_iters (int, optional): The number of "improvement" iterations to run. Defaults to 2.
+            - max_iter (int, optional): The number of "improvement" iterations to run. Defaults to 2.
             - **kwargs: keyword arguments for the parent AssistantAgent.
         """
         super().__init__(**kwargs)
         self.paper_input = paper_input
-        self.work_dir = work_dir
+        self.work_dir = Path(work_dir)
         self.vlm_config = vlm_config
         self.register_reply(
             [Agent, None], reply_func=ModelCreator._reply_user, position=0
         )
-        self._n_iters = n_iters
+        self._max_iters = max_iter
 
     def _reply_user(self, messages=None, sender=None, config=None):
         if all((messages is None, sender is None)):
@@ -74,7 +75,7 @@ class ModelCreator(AssistantAgent):
             .endswith("TERMINATE"),
             code_execution_config={
                 "last_n_messages": 3,
-                "work_dir": self.work_dir,
+                "work_dir": str(self.work_dir),
                 "use_docker": False,
             },
             llm_config=self.llm_config,
@@ -83,6 +84,7 @@ class ModelCreator(AssistantAgent):
         critics = MultimodalConversableAgent(
             name="Critics",
             system_message=CRITICS_PROMPT,
+            code_execution_config=False,
             llm_config=self.vlm_config,
             human_input_mode="NEVER",
             max_consecutive_auto_reply=1,
@@ -98,8 +100,8 @@ class ModelCreator(AssistantAgent):
         # Initiate Chat
         commander.initiate_chat(coder, message=user_question)
 
-        for i in range(self._n_iters):
-            with open("model.py", "r") as f:
+        for i in range(self._max_iters):
+            with open(self.work_dir / "model.py", "r") as f:
                 generated_code = f.read()
             generated_code_box = "```\n" + generated_code + "\n```"
             commander.send(
