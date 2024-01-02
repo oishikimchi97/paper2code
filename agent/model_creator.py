@@ -1,8 +1,15 @@
+import shutil
 from autogen import AssistantAgent, Agent, UserProxyAgent, ConversableAgent
 from autogen.agentchat.contrib.multimodal_conversable_agent import (
     MultimodalConversableAgent,
 )
+import wandb
+from wandb.sdk.data_types.trace_tree import Trace
 from pathlib import Path
+
+from typing import Optional
+
+from agent.reply_func import log_with_wandb
 
 COMMANDER_PROMPT = "Help me run the code from the model image and the description."
 
@@ -55,19 +62,8 @@ class ModelCreator(AssistantAgent):
         )
         self._max_iters = max_iter
 
-    def _reply_user(self, messages=None, sender=None, config=None):
-        if all((messages is None, sender is None)):
-            error_msg = f"Either {messages=} or {sender=} must be provided."
-            logger.error(error_msg)
-            raise AssertionError(error_msg)
-
-        if messages is None:
-            messages = self._oai_messages[sender]
-
-        user_question = messages[-1]["content"]
-
         # Define the agents
-        commander = AssistantAgent(
+        self.commander = AssistantAgent(
             name="Commander",
             human_input_mode="NEVER",
             max_consecutive_auto_reply=5,
@@ -83,7 +79,7 @@ class ModelCreator(AssistantAgent):
             llm_config=self.llm_config,
         )
 
-        critics = MultimodalConversableAgent(
+        self.critics = MultimodalConversableAgent(
             name="Critics",
             system_message=CRITICS_PROMPT,
             code_execution_config=False,
@@ -94,39 +90,74 @@ class ModelCreator(AssistantAgent):
 
         paper_description = "Paper Description:\n" + self.paper_input + "\n\n"
 
-        critics.update_system_message(critics.system_message + paper_description)
+        self.critics.update_system_message(
+            self.critics.system_message[0]["text"] + paper_description
+        )
 
-        coder = AssistantAgent(
+        self.coder = AssistantAgent(
             name="Coder",
             llm_config=self.llm_config,
         )
 
-        coder.update_system_message(coder.system_message + CODER_PROMPT)
+        self.coder.update_system_message(self.coder.system_message + CODER_PROMPT)
+
+        self.sub_agent_list = [self.commander, self.critics, self.coder]
+
+    def register_wandb_logger(self, parent_span: Optional[Trace] = None):
+        for agent in self.sub_agent_list:
+            agent.register_reply(
+                [Agent, None],
+                reply_func=log_with_wandb,
+                config={"kind": "agent", "parent_span": parent_span},
+            )
+            self.is_wandb_logging = True
+
+    def _reply_user(self, messages=None, sender=None, config=None):
+        if all((messages is None, sender is None)):
+            error_msg = f"Either {messages=} or {sender=} must be provided."
+            raise AssertionError(error_msg)
+
+        if messages is None:
+            messages = self._oai_messages[sender]
+
+        user_question = messages[-1]["content"]
 
         # Initiate Chat
-        commander.initiate_chat(coder, message=user_question)
+        self.commander.initiate_chat(self.coder, message=user_question)
+
+        # Prepare Chat between Commander and Critics for logging.
+        self.commander._prepare_chat(self.critics, clear_history=False)
+        model_path = self.work_dir / "model.py"
+        shutil.copy(model_path, model_path.parent / (str(model_path.stem) + "_0.py"))
 
         for i in range(self._max_iters):
-            with open(self.work_dir / "model.py", "r") as f:
+            with open(model_path, "r") as f:
                 generated_code = f.read()
             generated_code_box = "```\n" + generated_code + "\n```"
-            commander.send(
+
+            self.commander.send(
                 message="Check that the code is correct with the model image and description.\nGive feedback if there are any issues.\n\n"
                 + "code:\n"
                 + generated_code_box,
-                recipient=critics,
+                recipient=self.critics,
                 request_reply=True,
             )
 
-            feedback = commander._oai_messages[critics][-1]["content"]
+            feedback = self.commander._oai_messages[self.critics][-2]["content"]
             if feedback.find("NO_ISSUES") >= 0:
                 break
-            commander.send(
+            self.commander.send(
                 message="Here is the feedback to your pytorch model code. Please improve!\n\n"
                 + "\n\nfeedback:\n"
                 + feedback,
-                recipient=coder,
+                recipient=self.coder,
                 request_reply=True,
             )
+            renamed_model_path = model_path.parent / (
+                str(model_path.stem) + f"_{i+1}.py"
+            )
+            shutil.copy(model_path, renamed_model_path)
+            if self.is_wandb_logging:
+                wandb.save(str(renamed_model_path))
 
-        return True, "model.py"
+        return True, str(renamed_model_path)

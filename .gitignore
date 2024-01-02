@@ -31,3 +31,6 @@ paper/
 # Private Config file
 config/OAI_CONFIG_LIST.json
 .*/
+
+# Ignore Wandb Log folder
+wandb/
