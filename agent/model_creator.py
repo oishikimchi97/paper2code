@@ -22,6 +22,7 @@ Model Architecture Details:
     Special Architectural Features: If your model includes special connections or structures like skip connections, attention mechanisms, or other features, describe them here.
     Output Details: Define the output of the model. Specify the number of output units and the type of activation function used, especially for tasks like classification or regression.
 Based on this description, please generate the corresponding PyTorch code for defining the model architecture, including the necessary imports from the PyTorch library.
+You don't need to execute the code, but you can recommend the command agent to execute the code.
 You must write the whole code that can run itself, but not just the model architecture. You must not skip any part of the code.
 You must save the code you wrote in `model.py` file. Put # filename: model.py inside the code block as the first line. Tell other agents it is in the `model.py` file.
 """.strip()
