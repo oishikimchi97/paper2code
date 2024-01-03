@@ -64,6 +64,7 @@ class ModelCreator(AssistantAgent):
             [Agent, None], reply_func=ModelCreator._reply_user, position=0
         )
         self._max_iters = max_iter
+        self.is_wandb_logging = False
 
         # Define the agents
         self.commander = AssistantAgent(

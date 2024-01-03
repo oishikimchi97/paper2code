@@ -43,7 +43,7 @@ if __name__ == "__main__":
         except yaml.YAMLError as exc:
             print(exc)
 
-    wandb.init(project="paper2code", config=config)
+    wandb.init(entity="tokyo-univ", project="paper2code", config=config)
 
     data_dir = Path(args.data_dir)
     current_time = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
@@ -109,9 +109,11 @@ if __name__ == "__main__":
         )
 
         if wandb.config.human_input_mode:
-            user_proxy.send(message=script, recipient=interpreter, request_reply=True)
-        else:
+            user_proxy.human_input_mode = "ALWAYS"
             user_proxy.initiate_chat(recipient=interpreter, message=script)
+            user_proxy.human_input_mode = "NEVER"
+        else:
+            user_proxy.send(message=script, recipient=interpreter, request_reply=True)
 
         interpret = user_proxy._oai_messages[interpreter][-1]["content"]
 
