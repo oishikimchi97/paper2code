@@ -42,6 +42,9 @@ class ModelCreator(AssistantAgent):
         work_dir: str = ".",
         paper_input: str = "",
         vlm_config: dict = {},
+        commander_prompt: str = COMMANDER_PROMPT,
+        coder_prompt: str = CODER_PROMPT,
+        critics_prompt: str = CRITICS_PROMPT,
         **kwargs,
     ):
         """
@@ -67,7 +70,7 @@ class ModelCreator(AssistantAgent):
             name="Commander",
             human_input_mode="NEVER",
             max_consecutive_auto_reply=5,
-            system_message=COMMANDER_PROMPT,
+            system_message=commander_prompt,
             is_termination_msg=lambda x: x.get("content", "")
             .rstrip()
             .endswith("TERMINATE"),
@@ -81,7 +84,7 @@ class ModelCreator(AssistantAgent):
 
         self.critics = MultimodalConversableAgent(
             name="Critics",
-            system_message=CRITICS_PROMPT,
+            system_message=critics_prompt,
             code_execution_config=False,
             llm_config=self.vlm_config,
             human_input_mode="NEVER",
@@ -99,7 +102,7 @@ class ModelCreator(AssistantAgent):
             llm_config=self.llm_config,
         )
 
-        self.coder.update_system_message(self.coder.system_message + CODER_PROMPT)
+        self.coder.update_system_message(self.coder.system_message + coder_prompt)
 
         self.sub_agent_list = [self.commander, self.critics, self.coder]
 
@@ -129,6 +132,8 @@ class ModelCreator(AssistantAgent):
         self.commander._prepare_chat(self.critics, clear_history=False)
         model_path = self.work_dir / "model.py"
         shutil.copy(model_path, model_path.parent / (str(model_path.stem) + "_0.py"))
+        if self.is_wandb_logging:
+            wandb.save(str(model_path))
 
         for i in range(self._max_iters):
             with open(model_path, "r") as f:
@@ -148,7 +153,7 @@ class ModelCreator(AssistantAgent):
                 break
             self.commander.send(
                 message="Here is the feedback to your pytorch model code. Please improve!\n\n"
-                + "\n\nfeedback:\n"
+                + "feedback:\n"
                 + feedback,
                 recipient=self.coder,
                 request_reply=True,

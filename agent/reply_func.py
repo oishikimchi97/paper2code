@@ -2,6 +2,8 @@ import re
 from wandb.sdk.data_types.trace_tree import Trace
 import datetime
 
+SPAN_NAME = "paper2code"
+
 
 def get_current_time():
     return round(datetime.datetime.now().timestamp() * 1000)
@@ -40,6 +42,10 @@ def log_with_wandb(recipient, messages, sender, config):
         sender_span._span.end_time_ms = cur_time
         receive_message = messages[-2]["content"]
         reply_message = messages[-1]["content"]
+        if isinstance(receive_message, str):
+            receive_message = "\n" + receive_message
+        if isinstance(reply_message, str):
+            reply_message = "\n" + reply_message
         sender.span_dict[recipient.name].add_inputs_and_outputs(
             inputs={"receive_message": receive_message},
             outputs={"reply_message": reply_message},
@@ -50,7 +56,7 @@ def log_with_wandb(recipient, messages, sender, config):
                 sender_span._span.status_code = "SUCCESS"
             else:
                 sender_span._span.status_code = "ERROR"
-            sender_span.log(name="paper2code")
+            sender_span.log(name=SPAN_NAME)
 
     if parent_span:
         parent_span.add_child(recipient.span_dict[sender.name])

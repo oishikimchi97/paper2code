@@ -23,17 +23,27 @@ class MultiStream(object):
                 stream.flush()
 
 
-def convert_img_src_to_absolute(text, workdir: str) -> str:
+def convert_img_src_to_absolute(text, data_dir: str) -> str:
     # Extract the relative path from the img tag
     relative_path = re.search(r"<img (.*?)>", text).group(1)
 
     # Join the working directory path with the relative path to get the absolute path
-    absolute_path = os.path.abspath(os.path.join(workdir, relative_path))
+    absolute_path = os.path.abspath(os.path.join(data_dir, relative_path))
 
     # Replace the relative path in the img tag with the absolute path
     converted_text = text.replace(relative_path, absolute_path)
 
     return converted_text
+
+
+def preprocess_script(script: str, use_image: bool = True, data_dir: str = "./") -> str:
+    if use_image:
+        script = convert_img_src_to_absolute(script, data_dir)
+    else:
+        # Define the regex pattern for the <img> tag
+        pattern = r"<img .+?>"
+        script = re.sub(pattern, "", script)
+    return script
 
 
 def attach_file2stdout(file_dir: Path) -> MultiStream:
