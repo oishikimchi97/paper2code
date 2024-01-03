@@ -5,6 +5,11 @@ import re
 import sys
 import datetime
 
+import wandb
+import yaml
+
+DEFAULT_CONFIG_PATH = "./config/wandb_config.yaml"
+
 
 class MultiStream(object):
     def __init__(self, *streams):
@@ -54,3 +59,17 @@ def attach_file2stdout(file_dir: Path) -> MultiStream:
     multi_stream = MultiStream(sys.stdout, file_stream)
     sys.stdout = multi_stream
     return multi_stream
+
+
+def load_config(config_path: str, run_path: str):
+    if config_path:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    elif run_path:
+        api = wandb.Api()
+        run = api.run(run_path)
+        config = run.config
+    else:
+        with open(DEFAULT_CONFIG_PATH, "r") as f:
+            config = yaml.safe_load(f)
+    return config

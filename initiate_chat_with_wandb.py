@@ -5,14 +5,13 @@ import argparse
 from pathlib import Path
 
 import wandb
-import yaml
 from agent import ModelCreator
 from agent.reply_func import get_current_time, log_with_wandb
-from utils.utils import attach_file2stdout, preprocess_script
+from utils.utils import attach_file2stdout, load_config, preprocess_script
 from autogen.agentchat.contrib.multimodal_conversable_agent import (
     MultimodalConversableAgent,
 )
-from autogen import AssistantAgent, Agent, UserProxyAgent, ConversableAgent
+from autogen import Agent, UserProxyAgent
 from config import gpt4v_config, gpt4_config
 from wandb.sdk.data_types.trace_tree import Trace
 
@@ -30,18 +29,17 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", type=str, help="The data directory path")
     parser.add_argument("--output_dir", type=str, help="The output directory path")
     parser.add_argument(
-        "--config",
+        "--config", type=str, help="The Wandb config file path", default=None
+    )
+    parser.add_argument(
+        "--run_path",
         type=str,
-        help="The Wandb config file path",
-        default="./config/wandb_config.yaml",
+        help="The Wandb run path to load the config file from the run",
+        default=None,
     )
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
-        try:
-            config = yaml.safe_load(f)
-        except yaml.YAMLError as exc:
-            print(exc)
+    config = load_config(args.config, args.run_path)
 
     wandb.init(entity="tokyo-univ", project="paper2code", config=config)
 
