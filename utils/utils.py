@@ -48,7 +48,7 @@ def preprocess_script(script: str, use_image: bool = True, data_dir: str = "./")
         # Define the regex pattern for the <img> tag
         pattern = r"<img .+?>"
         script = re.sub(pattern, "", script)
-    return script
+    return script.strip()
 
 
 def attach_file2stdout(file_dir: Path) -> MultiStream:

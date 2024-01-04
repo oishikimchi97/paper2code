@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from pprint import pprint
 import autogen
 import argparse
 from pathlib import Path
@@ -14,12 +15,6 @@ from autogen.agentchat.contrib.multimodal_conversable_agent import (
 from autogen import Agent, UserProxyAgent
 from config import gpt4v_config, gpt4_config
 from wandb.sdk.data_types.trace_tree import Trace
-
-INTERPRETER_PROMPT = """
-You are machine learning paper interpreter. 
-You must interpret the paper and give the description of the model for the coder agent to make the model code better.
-You have to carefully read the given text description about the model and extract information from the input images, if you need.
-""".strip()
 
 SPAN_NAME = "paper2code"
 
@@ -52,11 +47,13 @@ if __name__ == "__main__":
     with open(script_path) as f:
         script = f.read()
 
-    script = preprocess_script(script, use_image=True, data_dir=data_dir)
+    pprint(f"Wandb config\n{wandb.config}")
+
+    script = preprocess_script(
+        script, use_image=wandb.config.use_interpreter, data_dir=data_dir
+    )
 
     root_span = Trace(name="root", kind="agent")
-
-    print(wandb.config)
 
     creator_prompt = {
         "commander_prompt": wandb.config.commander_prompt,
@@ -71,7 +68,7 @@ if __name__ == "__main__":
         paper_input=script,
         vlm_config=gpt4v_config,
         llm_config=gpt4_config,
-        **creator_prompt
+        **creator_prompt,
     )
 
     user_proxy = UserProxyAgent(
@@ -88,11 +85,7 @@ if __name__ == "__main__":
 
     root_span._span.start_time_ms = get_current_time()
     if wandb.config.use_interpreter:
-        interpret_prompt = (
-            wandb.config.interpreter_prompt
-            if wandb.config.interpreter_prompt
-            else INTERPRETER_PROMPT
-        )
+        interpret_prompt = wandb.config.interpreter_prompt
         interpreter = MultimodalConversableAgent(
             name="Interpreter",
             human_input_mode="NEVER",
